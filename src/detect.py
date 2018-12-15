@@ -106,12 +106,3 @@ class detector():
         #finally:
         cv2.imshow('prediction.jpg', img)
         cv2.waitKey(waitkey)
-
-if __name__ == "__main__":
-    model = darknet("D:/ShaoshuYang/HPE/cfg/yolov3.cfg", 80)
-    model.load_weight("src/yolov3.weights")
-    model.cuda()
-    test = detector(model)
-
-    img = cv2.imread("D:/ShaoshuYang/HPE/data/samples/sishui.jpg")
-    test.detect_test(img, 100000)

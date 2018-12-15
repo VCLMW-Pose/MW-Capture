@@ -21,64 +21,111 @@ from src.detect import detector
 
 class capture():
     def __init__(self, minR, maxR, resR, minTheta, maxTheta, resTheta, minPhi, maxPhi, resPhi, threshold, mti=False):
+        '''
+        @description: Capture initialization. Walabot configuration is also completed here. Capture deploys a YOLO v3 detector to
+        detect human and once a person is detected and its central point is near the centre of optical image, sensors
+        will begin to collect data and save to predetermined directory.
+        @arges:
+             minR        : (int) scan arena configuration parameter, minimum distance
+             maxR        : (int) maximum distance of scan arena
+             resR        : (float) resolution of depth
+             minTheta    : (int) minimum theta
+             maxTheta    : (int) maximum theta
+             resTheta    : (int) vertical angular resolution
+             minPhi      : (int) minimum phi
+             maxPhi      : (int) maximum phi
+             resPhi      : (int) horizontal angular resolution
+             threshold   : (int) threshold for weak signals
+             mode        : (string) scan mode
+             mti         : (boolean) ignore static reflectors
+        '''
+        # YOLO v3 detector deployment
         model = darknet("cfg/yolov3.cfg", 80)
-        model.load_weight("src/yolov3-1-1.weights")
+        model.load_weight("src/yolov3.weights")
         model.cuda()
         model.eval()
         self.detector = detector(model)
+        # Walabot configuration and start up
         self.walabot = walabot()
         self.walabot.set(minR, maxR, resR, minTheta, maxTheta, resTheta, minPhi, maxPhi, resPhi, threshold, mti)
         self.walabot.start()
 
-    def detect(self, frame):
+    def detect(self, frame, mid_point, offset):
+        '''
+        @description: Detector checks the central point of bounding-box. If it falls in the expected arena, sensors can start to
+        collect data.
+        @args:
+            frame       : (ndarray) optical image frame
+            mid_point   : (int) defines the central point of image
+            offset      : (double) defines the scale of acceptable area
+        '''
         pred = self.detector.detect(frame)
 
         for prediction_ in pred:
-            if prediction_[6] == 0:
+            if prediction_[6] == 0:                                                         # 0 denotes person class
                 x_coord = (prediction_[2] - prediction_[0])/2
                 y_coord = (prediction_[3] - prediction_[1])/2
                 print ("Detected target at %d, %d"%(x_coord, y_coord))
-                return True
+                if abs(mid_point - x_coord) < offset:
+                    return True
 
 
-    def start_capture(self, save_dir):
-        start = time.clock()
-        optical_cap = cv2.VideoCapture(1)
-        headers = np.ndarray(self.walabot.dimensions())
+    def start_capture(self, save_dir, _lamda, frames_num):
+        '''
+        @description: start_capture would call a optical camera and a walabot as sensors. It acquire optical images through
+        the web camera successively and perform human detection based on optical image. If the bounding-box falls in the
+        expected area, sensors begin to collect data and save them to predetermined directory. The filename of data is
+        dependent on the CPU operation time. The acceptable area and expected acquisition frames can be customized.
+        @args:
+            save_dir      : (string) save directory
+            _lamda        : (double) defines the scale of acceptable area
+            frames_num    : (int) expected acquisition frame number
+        '''
+        optical_cap = cv2.VideoCapture(1)                                                   # Capture on optical camera
+        headers = np.ndarray(self.walabot.dimensions())                                     # Radio signal file headers
+
+        # Compute acceptable area
+        ret, frame = optical_cap.read()
+        mid_point = frame.shape[1]/2
+        offset = mid_point*_lamda
 
         while 1:
             ret, frame = optical_cap.read()
             try:
-                status = self.detect(frame)
+                status = self.detect(frame, mid_point, offset)                              # Human detection
             except:
                 continue
 
             if status == True:
-                signals = []
-                frames = []
+                signals = []                                                                # Signal list
+                frames = []                                                                 # Optical image list
                 clocks_frame = []
                 clocks_signals = []
-                for i in range(1, 20):
+                # Data collection process
+                for i in range(1, frames_num):
                     ret, frame = optical_cap.read()
                     clocks_frame.append(time.clock())
                     clocks_signals.append(time.clock())
                     frames.append(frame)
                     signals.append(self.walabot.scan())
 
-                for i in range(1, 20):
+                # Save collected data
+                for i in range(1, frames_num):
+                    # Save optical images
                     _time = str(clocks_frame[i])
-                    path = os.join.path(save_dir, _time + ".jpg")
+                    path = os.path.join(save_dir, _time + ".jpg")
                     cv2.imwrite(path, frames[i])
 
+                    # Save radio signals by binary file
                     _time = str(clocks_signals[i])
-                    path = os.join.path(save_dir, _time)
+                    path = os.path.join(save_dir, _time)                                    # Concatenate saving directory
                     file = open(path, "wb")
                     headers.tofile(file)
                     np.ndarray(signals[i]).tofile(file)
                     file.close()
                 print("Collection complete")
 
-            if cv2.waitKey(100) & 0xFF == ord('q'):
+            if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         optical_cap.release()
 
@@ -118,12 +165,12 @@ class capture():
 
                 # Press 'q' to exit
                 cv2.imshow("target", frame)
-                if cv2.waitKey(100) & 0xFF == ord('q'):
+                if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
 
             except:
                 cv2.imshow("target", frame)
-                if cv2.waitKey(100) & 0xFF == ord('q'):
+                if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
 
         cap.release()
