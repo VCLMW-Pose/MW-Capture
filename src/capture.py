@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 '''
+    Copyright(c) 2018
     Created on Sat Dec 15 20:46 2018
 
     Author           : Shaoshu Yang
@@ -69,7 +70,6 @@ class capture():
                 if abs(mid_point - x_coord) < offset:
                     return True
 
-
     def start_capture(self, save_dir, _lamda, frames_num):
         '''
         @description: start_capture would call a optical camera and a walabot as sensors. It acquire optical images through
@@ -82,7 +82,7 @@ class capture():
             frames_num    : (int) expected acquisition frame number
         '''
         optical_cap = cv2.VideoCapture(1)                                                   # Capture on optical camera
-        headers = np.ndarray(self.walabot.dimensions())                                     # Radio signal file headers
+        headers = np.array(self.walabot.dimensions())                                       # Radio signal file headers
 
         # Compute acceptable area
         ret, frame = optical_cap.read()
@@ -107,7 +107,7 @@ class capture():
                     clocks_frame.append(time.clock())
                     clocks_signals.append(time.clock())
                     frames.append(frame)
-                    signals.append(self.walabot.scan())
+                    signals.append(self.walabot.scan()[0])
 
                 # Save collected data
                 for i in range(1, frames_num):
@@ -121,7 +121,7 @@ class capture():
                     path = os.path.join(save_dir, _time)                                    # Concatenate saving directory
                     file = open(path, "wb")
                     headers.tofile(file)
-                    np.ndarray(signals[i]).tofile(file)
+                    np.array(signals[i]).tofile(file)
                     file.close()
                 print("Collection complete")
 

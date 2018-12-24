@@ -92,7 +92,7 @@ class walabot():
         '''
         Return the dimensions of collected signals in the form of [row_num, col_num, channel_num]
         '''
-        return [(self.maxTheta - self.maxTheta)/self.resTheta - 1, (self.maxPhi - self.minPhi)/self.resPhi - 1, (self.maxR - self.minR)/self.resR - 1]
+        return list(map(int, [(self.maxTheta - self.minTheta)/self.resTheta - 1, (self.maxPhi - self.minPhi)/self.resPhi - 1, (self.maxR - self.minR)/self.resR - 1]))
 
 if __name__ == '__main__':
     Walabot = walabot()
