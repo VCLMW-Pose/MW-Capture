@@ -16,7 +16,6 @@ import matplotlib.pyplot as plt
 import WalabotAPI
 import numpy as np
 import os
-from src.utils.imageproc import *
 from sys import platform
 from matplotlib import animation
 
